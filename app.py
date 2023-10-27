@@ -86,6 +86,24 @@ def delete_user(usuario_id,agendar):
     return {"erro": "id não encontrado"}, 404
 
 #AQUARIOS
+
+@app.route('/aquarios', methods=['GET'])
+def ler_aquarios():
+
+    try:
+        return {"aquarios": aquarios.read_document_all()}, 200
+    except Exception as e:
+        return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+@app.route('/aquarios/<aquario_id>', methods=['GET'])
+def ler_aquario_id(aquario_id):
+    if aquarios.existe({"_id": bson.ObjectId(aquario_id)}):
+        try:
+            return {"aquario": aquarios.read_document_one({"_id":bson.ObjectId(aquario_id)})}, 200
+        except Exception as e:
+            return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        
+    return {"erro": "id não encontrado"}, 404
     
 @app.route('/aquarios', methods=['POST'])
 def cadastrar_aquario():
@@ -163,7 +181,7 @@ def cadastrar_agendamento(usuario_id,aquario_id):
             
             aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
             usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, user)
-            
+
             return {"sucesso": "agendamento realizado"}, 200
         except Exception as e:
             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
