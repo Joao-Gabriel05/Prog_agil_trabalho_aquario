@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo, ObjectId
 from Mongo import Mongo
+from pass_functions import *
 
 app = Flask(__name__)
 
@@ -12,15 +13,17 @@ def login():
     data = request.json
 
     try:
-        if usuarios.existe(data):
-            return {"sucesso":"usuario autenticado"}, 200
+        if usuarios.existe({"email":data['email']}):
+            user = usuarios.read_document_one({"email":data['email']})
+            if verificar_senha(data["senha"], user["senha"]):
+                return {"sucesso":"usuario autenticado"}, 200
         else:
             return {"erro":"email ou senha incorretos"}, 400
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
     
 @app.route('/usuarios', methods=['POST'])
-def cadastrar():
+def cadastrar_user():
     data = request.json
 
     if all(key not in data for key in ['nome','email','senha']) or all(not value.strip() or type(value) != str  for value in data.values()):
@@ -30,10 +33,25 @@ def cadastrar():
         return {"erro":"email ja cadastrado"}
 
     try:
-        if usuarios.existe(data):
-            return {"sucesso":"usuario autenticado"}, 200
-        else:
-            return {"erro":"email ou senha incorretos"}, 400
+        data["senha"] = criar_senha_criptografada(data["senha"])
+        usuarios.create_document(data)
+        return {"sucesso": "usuario criado com sucesso"}, 201
+    except Exception as e:
+        return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+@app.route('/aquarios', methods=['POST'])
+def cadastrar_aquario():
+    data = request.json
+
+    if all(key not in data for key in ['nome','local']) or all(not value.strip() or type(value) != str  for value in data.values()):
+        return {"erro": "informaçoes faltando"}
+    
+    if aquarios.existe({"nome":data["nome"]}):
+        return {"erro":"aquario ja cadastrado"}
+
+    try:
+        aquarios.create_document(data)
+        return {"sucesso": "aquario criado com sucesso"}, 201
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
