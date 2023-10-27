@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
-from flask_pymongo import PyMongo, ObjectId
 from Mongo import Mongo
 from pass_functions import *
+import bson
 
 app = Flask(__name__)
 
@@ -55,27 +55,85 @@ def cadastrar_aquario():
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
-@app.route('/usuarios/<usuario_id>', methods=['PUT'])
-def update_usuario(usuario_id):
-    try:
+@app.route('/usuarios/<usuario_id>/<int:agendar>', methods=['PUT'])
+def agendar_update_user(usuario_id,agendar):
+    if usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
         data = request.json
-        if not data:
-            return jsonify({"error": "Dado para atualização não fornecido!"}), 400
-        usuarios.db.usuarios.update_one({"_id": ObjectId(usuario_id)}, {"$set": data})
-        return jsonify({"message": f"Usuario {usuario_id} atualizado com sucesso!"}), 200
-    except Exception as e:
-        return {"erro":str(e)}, 500
 
-@app.route('/usuarios/<usuario_id>', methods=['GET'])
-def get_usuario(usuario_id):
+        if all(not value.strip() or type(value) != str  for value in data.values()):
+            return {"erro": "Dado para atualização não fornecido!"}, 400
+        
+        if agendar:
+            try:
+                user = usuarios.read_document_one({"_id": bson.ObjectId(usuario_id)})
+                del user["_id"]
+                if 'agendamentos' not in user:
+                    user["agendametos"] = []
+
+                user["agendamentos"].append(data["agendamento"])
+                
+                usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": user})
+                return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        else:
+            try:
+                if "senha" in data:
+                    data["senha"] = criar_senha_criptografada(data["senha"])
+                usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": data})
+                return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+    return {"erro": "id não encontrado"}, 404
+
+
+    
+@app.route('/aquarios', methods=['POST'])
+def cadastrar_aquario():
+    data = request.json
+
+    if all(key not in data for key in ['nome','local']) or all(not value.strip() or type(value) != str  for value in data.values()):
+        return {"erro": "informaçoes faltando"}
+    
+    if aquarios.existe({"nome":data["nome"]}):
+        return {"erro":"aquario ja cadastrado"}
+
     try:
-        usuario = usuarios.db.usuarios.find_one({"_id": ObjectId(usuario_id)})
-        if usuario:
-            usuario["_id"] = str(usuario["_id"])
-            return usuario, 200
-        return jsonify({"erro": "Usuario não encontrado!"}), 404
+        aquarios.create_document(data)
+        return {"sucesso": "aquario criado com sucesso"}, 201
     except Exception as e:
-        return {"erro":str(e)}, 500
+        return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+@app.route('/aquarios/<aquario_id>/<int:agendar>', methods=['PUT'])
+def agendar_update_aquario(aquario_id,agendar):
+    if aquarios.existe({"_id":bson.ObjectId(aquario_id)}):
+        data = request.json
+
+        if all(not value.strip() or type(value) != str  for value in data.values()):
+            return {"erro": "Dado para atualização não fornecido!"}, 400
+        
+        if agendar:
+            try:
+                aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
+                del aquario["_id"]
+                if 'agendamentos' not in aquario:
+                    aquario["agendametos"] = []
+
+                aquario["agendamentos"].append(data["agendamento"])
+                
+                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, {"$set": aquario})
+                return {"sucesso": f"aquario {aquario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        else:
+            try:
+                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, {"$set": data})
+                return {"sucesso": f"aquario {aquario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+    return {"erro": "id não encontrado"}, 404
 
 if __name__ == '__main__':
     app.run(debug=True)
