@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
-from flask_pymongo import PyMongo, ObjectId
 from Mongo import Mongo
 from pass_functions import *
+import bson
 
 app = Flask(__name__)
 
@@ -57,25 +57,21 @@ def cadastrar_aquario():
 
 @app.route('/usuarios/<usuario_id>', methods=['PUT'])
 def update_usuario(usuario_id):
-    try:
+    if usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
         data = request.json
-        if not data:
-            return jsonify({"error": "Dado para atualização não fornecido!"}), 400
-        usuarios.db.usuarios.update_one({"_id": ObjectId(usuario_id)}, {"$set": data})
-        return jsonify({"message": f"Usuario {usuario_id} atualizado com sucesso!"}), 200
-    except Exception as e:
-        return {"erro":str(e)}, 500
 
-@app.route('/usuarios/<usuario_id>', methods=['GET'])
-def get_usuario(usuario_id):
-    try:
-        usuario = usuarios.db.usuarios.find_one({"_id": ObjectId(usuario_id)})
-        if usuario:
-            usuario["_id"] = str(usuario["_id"])
-            return usuario, 200
-        return jsonify({"erro": "Usuario não encontrado!"}), 404
-    except Exception as e:
-        return {"erro":str(e)}, 500
+        if all(not value.strip() or type(value) != str  for value in data.values()):
+            return {"error": "Dado para atualização não fornecido!"}, 400
+        
+        try:
+            if "senha" in data:
+                data["senha"] = criar_senha_criptografada(data["senha"])
+            usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": data})
+            return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
+        except Exception as e:
+             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+    return {"erro": "id não encontrado"}, 404
 
 if __name__ == '__main__':
     app.run(debug=True)
