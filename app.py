@@ -38,6 +38,40 @@ def cadastrar_user():
         return {"sucesso": "usuario criado com sucesso"}, 201
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+
+@app.route('/usuarios/<usuario_id>/<int:agendar>', methods=['PUT'])
+def agendar_update_user(usuario_id,agendar):
+    if usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
+        data = request.json
+
+        if all(not value.strip() or type(value) != str  for value in data.values()):
+            return {"erro": "Dado para atualização não fornecido!"}, 400
+        
+        if agendar:
+            try:
+                user = usuarios.read_document_one({"_id": bson.ObjectId(usuario_id)})
+                del user["_id"]
+                if 'agendamentos' not in user:
+                    user["agendametos"] = []
+
+                user["agendamentos"].append(data["agendamento"])
+                
+                usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": user})
+                return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        else:
+            try:
+                if "senha" in data:
+                    data["senha"] = criar_senha_criptografada(data["senha"])
+                usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": data})
+                return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+    return {"erro": "id não encontrado"}, 404
+
+
     
 @app.route('/aquarios', methods=['POST'])
 def cadastrar_aquario():
@@ -54,22 +88,34 @@ def cadastrar_aquario():
         return {"sucesso": "aquario criado com sucesso"}, 201
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
-
-@app.route('/usuarios/<usuario_id>', methods=['PUT'])
-def update_usuario(usuario_id):
-    if usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
+    
+@app.route('/aquarios/<aquario_id>/<int:agendar>', methods=['PUT'])
+def agendar_update_aquario(aquario_id,agendar):
+    if aquarios.existe({"_id":bson.ObjectId(aquario_id)}):
         data = request.json
 
         if all(not value.strip() or type(value) != str  for value in data.values()):
-            return {"error": "Dado para atualização não fornecido!"}, 400
+            return {"erro": "Dado para atualização não fornecido!"}, 400
         
-        try:
-            if "senha" in data:
-                data["senha"] = criar_senha_criptografada(data["senha"])
-            usuarios.update_document({"_id": bson.ObjectId(usuario_id)}, {"$set": data})
-            return {"sucesso": f"Usuario {usuario_id} atualizado com sucesso!"}, 200
-        except Exception as e:
-             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        if agendar:
+            try:
+                aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
+                del aquario["_id"]
+                if 'agendamentos' not in aquario:
+                    aquario["agendametos"] = []
+
+                aquario["agendamentos"].append(data["agendamento"])
+                
+                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, {"$set": aquario})
+                return {"sucesso": f"aquario {aquario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        else:
+            try:
+                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, {"$set": data})
+                return {"sucesso": f"aquario {aquario_id} atualizado com sucesso!"}, 200
+            except Exception as e:
+                return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
     
     return {"erro": "id não encontrado"}, 404
 
