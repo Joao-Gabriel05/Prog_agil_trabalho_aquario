@@ -1,1 +1,1 @@
-web: gunicorn app:app --preload -b 0.0.0.0:5000
+web: gunicorn app:app --preload -b https://proj-aquario-back-38c85cbc3295.herokuapp.com:5000
