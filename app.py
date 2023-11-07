@@ -21,6 +21,18 @@ def login():
             return {"erro":"email ou senha incorretos"}, 400
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+    
+@app.route('/usuarios/<usuario_id>', methods=['GET'])
+def ler_usuario_id(usuario_id):
+    if usuarios.existe({"_id": bson.ObjectId(usuario_id)}):
+        try:
+            user = usuarios.read_document_one({"_id":bson.ObjectId(usuario_id)})
+            user['senha'] = str(user['senha'])
+            return {"usuario": user}, 200
+        except Exception as e:
+            return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+        
+    return {"erro": "id não encontrado"}, 404
 
 @app.route('/usuarios', methods=['POST'])
 def cadastrar_user():
