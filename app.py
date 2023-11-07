@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from Mongo import Mongo
 from pass_functions import *
 import bson
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -145,6 +146,42 @@ def delete_aquario(aquario_id):
     return {"erro": "id não encontrado"}, 404
 
 #AGENDAMENTOS
+def verifica_horario(entrada_horario):
+        
+    data, hora = entrada_horario.split('-')
+    data_desejada = datetime.strptime(data, "%d/%m/%Y").date()
+    data_atual = datetime.now().date()
+    if data_desejada < data_atual:
+        return True
+        
+    elif data_desejada == data_atual:
+        hora_desejada = datetime.strptime(hora, "%H_%M").time()
+        hora_atual = datetime.now().time()
+        if hora_desejada <= hora_atual:
+            return True
+    return False
+
+@app.route('/verifica_agendamentos', methods=['GET'])
+def verifica_agendamento_expirou():
+    try:
+        users = usuarios.read_document_all()
+        for user in users:
+            if 'agendamentos' in user:
+                for agendamento in user['agendamentos']:
+                    if verifica_horario(agendamento['agendamento']):
+                        deletar_agendamento(user['_id'],agendamento['aquario']['_id'],agendamento)
+    except Exception as e:
+            return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
+
+def verifica_agendamento_valido(tentativa_agendamento):
+    users = usuarios.read_document_all()
+    for user in users:
+        if 'agendamentos' in user:
+            for agendamento in user['agendamentos']:
+                if agendamento['agendamento'] == tentativa_agendamento:
+                    return False
+    return True
+
 @app.route('/agendamentos/usuario/<usuario_id>/aquario/<aquario_id>', methods=['POST'])
 def cadastrar_agendamento(usuario_id,aquario_id):
     '''
@@ -154,11 +191,18 @@ def cadastrar_agendamento(usuario_id,aquario_id):
     }
     '''
     if aquarios.existe({"_id":bson.ObjectId(aquario_id)}) and usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
-        data = request.json
+        data_aquario = request.json
+        data_user = request.json
 
-        if all(not value.strip() or type(value) != str  for value in data.values()):
+        if all(not value.strip() or type(value) != str  for value in data_aquario.values()) and all(not value.strip() or type(value) != str  for value in data_user.values()):
             return {"erro": "Dado para atualização não fornecido!"}, 400
         
+        if not verifica_agendamento_valido(data_user):
+            return {"erro": "Horario indisponivel"}, 400
+        
+        if verifica_horario(data_user['agendamento']):
+            return {"erro": "Horario indisponivel"}, 400
+
         try:
             aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
             user = usuarios.read_document_one({"_id":bson.ObjectId(usuario_id)})
@@ -168,9 +212,9 @@ def cadastrar_agendamento(usuario_id,aquario_id):
             if 'agendamentos' not in user:
                 user["agendamentos"] = []
 
-            aquario["agendamentos"].append(data)
-            data["aquario"] = {"_id":aquario["_id"],"nome": aquario["nome"],"local": aquario["local"]}
-            user["agendamentos"].append(data)
+            aquario["agendamentos"].append(data_aquario)
+            data_user["aquario"] = {"_id":aquario["_id"],"nome": aquario["nome"],"local": aquario["local"]}
+            user["agendamentos"].append(data_user)
 
             del user["_id"]
             del aquario["_id"]
@@ -183,6 +227,28 @@ def cadastrar_agendamento(usuario_id,aquario_id):
             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
     
     return {"erro": "id não encontrado"}, 404
+
+@app.route('/agendamentos/usuario/<usuario_id>/aquario/<aquario_id>', methods=['DELETE'])
+def deletar_agendamento(usuario_id, aquario_id):
+    try:
+        aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
+        user = usuarios.read_document_one({"_id":bson.ObjectId(usuario_id)})
+
+        for agendamento in user['agendamentos']:
+            if verifica_horario(agendamento['agendamento']):
+                user['agendamentos'].remove(agendamento)
+                del agendamento['aquario']
+                aquario['agendamentos'].remove(agendamento)
+
+                del user['_id']
+                del aquario['_id']
+
+                usuarios.update_document({"_id":bson.ObjectId(usuario_id)}, user)
+                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
+
+        return {'sucesso': 'agendamento deletado'}
+    except Exception as e:
+            return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
 # if __name__ == '__main__':
 #     app.run(debug=True)
