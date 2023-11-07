@@ -152,9 +152,9 @@ def cadastrar_agendamento(usuario_id,aquario_id):
             user = usuarios.read_document_one({"_id":bson.ObjectId(usuario_id)})
 
             if 'agendamentos' not in aquario:
-                aquario["agendametos"] = []
+                aquario["agendamentos"] = []
             if 'agendamentos' not in user:
-                user["agendametos"] = []
+                user["agendamentos"] = []
 
             aquario["agendamentos"].append(data)
             data["aquario"] = {"_id":aquario["_id"],"nome": aquario["nome"],"local": aquario["local"]}
