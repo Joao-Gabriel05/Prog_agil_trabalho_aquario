@@ -192,8 +192,8 @@ def cadastrar_agendamento(usuario_id,aquario_id):
     }
     '''
     if aquarios.existe({"_id":bson.ObjectId(aquario_id)}) and usuarios.existe({"_id":bson.ObjectId(usuario_id)}):
-        data_aquario = request.json[:]
-        data_user = request.json[:]
+        data_aquario = request.json.copy()
+        data_user = request.json.copy()
 
         if all(not value.strip() or type(value) != str  for value in data_aquario.values()) and all(not value.strip() or type(value) != str  for value in data_user.values()):
             return {"erro": "Dado para atualização não fornecido!"}, 400
