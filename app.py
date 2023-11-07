@@ -170,6 +170,7 @@ def verifica_agendamento_expirou():
                 for agendamento in user['agendamentos']:
                     if verifica_horario(agendamento['agendamento']):
                         deletar_agendamento(user['_id'],agendamento['aquario']['_id'],agendamento)
+        return {"sucesso":"chekou todos os agendamnetos"},200
     except Exception as e:
             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
@@ -246,7 +247,7 @@ def deletar_agendamento(usuario_id, aquario_id):
                 usuarios.update_document({"_id":bson.ObjectId(usuario_id)}, user)
                 aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
 
-        return {'sucesso': 'agendamento deletado'}
+        return {'sucesso': 'agendamento deletado'}, 200
     except Exception as e:
             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
