@@ -169,7 +169,20 @@ def verifica_agendamento_expirou():
             if 'agendamentos' in user:
                 for agendamento in user['agendamentos']:
                     if verifica_horario(agendamento['agendamento']):
-                        deletar_agendamento(user['_id'],agendamento['aquario']['_id'],agendamento)
+                        user['agendamentos'].remove(agendamento)
+                        aquario_id = agendamento['aquario']['_id']
+                        usuario_id = user["_id"]
+                        aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
+                        del agendamento['aquario']
+                        aquario['agendamentos'].remove(agendamento)
+
+                        del user['_id']
+                        del aquario['_id']
+
+                        usuarios.update_document({"_id":bson.ObjectId(usuario_id)}, user)
+                        aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
+
+
         return {"sucesso":"chekou todos os agendamnetos"},200
     except Exception as e:
             return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
@@ -229,23 +242,22 @@ def cadastrar_agendamento(usuario_id,aquario_id):
     
     return {"erro": "id não encontrado"}, 404
 
-@app.route('/agendamentos/usuario/<usuario_id>/aquario/<aquario_id>', methods=['DELETE'])
-def deletar_agendamento(usuario_id, aquario_id):
+@app.route('/agendamentos/usuario/<usuario_id>/aquario/<aquario_id>/<int:indice>', methods=['DELETE'])
+def deletar_agendamento(usuario_id, aquario_id,indice):
     try:
         aquario = aquarios.read_document_one({"_id": bson.ObjectId(aquario_id)})
         user = usuarios.read_document_one({"_id":bson.ObjectId(usuario_id)})
 
-        for agendamento in user['agendamentos']:
-            if verifica_horario(agendamento['agendamento']):
-                user['agendamentos'].remove(agendamento)
-                del agendamento['aquario']
-                aquario['agendamentos'].remove(agendamento)
+        agendamento = user['agendamentos'][indice]
+        user['agendamentos'].remove(agendamento)
+        del agendamento['aquario']
+        aquario['agendamentos'].remove(agendamento)
 
-                del user['_id']
-                del aquario['_id']
+        del user['_id']
+        del aquario['_id']
 
-                usuarios.update_document({"_id":bson.ObjectId(usuario_id)}, user)
-                aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
+        usuarios.update_document({"_id":bson.ObjectId(usuario_id)}, user)
+        aquarios.update_document({"_id": bson.ObjectId(aquario_id)}, aquario)
 
         return {'sucesso': 'agendamento deletado'}, 200
     except Exception as e:
