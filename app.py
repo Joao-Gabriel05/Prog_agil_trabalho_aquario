@@ -16,7 +16,7 @@ def login():
         if usuarios.existe({"email":data['email']}):
             user = usuarios.read_document_one({"email":data['email']})
             if verificar_senha(data["senha"], user["senha"]):
-                return {"sucesso":"usuario autenticado"}, 200
+                return {"sucesso":f"usuario {user['_id']} autenticado"}, 200
         else:
             return {"erro":"email ou senha incorretos"}, 400
     except Exception as e:
@@ -34,8 +34,8 @@ def cadastrar_user():
 
     try:
         data["senha"] = criar_senha_criptografada(data["senha"])
-        usuarios.create_document(data)
-        return {"sucesso": "usuario criado com sucesso"}, 201
+        user = usuarios.create_document(data)
+        return {"sucesso": f"usuario {user['_id']} criado com sucesso"}, 201
     except Exception as e:
         return {"erro":"Desculpe tivemos um problema interno, tente novamente mais tarde. Detalhes: {}".format(str(e))}, 500
 
